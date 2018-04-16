@@ -26,6 +26,7 @@ class StackingModel:
         self.fold_models = {}
         self.combiner_input = None
 
+    @staticmethod
     def read_subset_file(self, subset_file):
         sub_file = open(subset_file, 'r')
         subset = [int(line.strip()) for line in sub_file.readlines()]
