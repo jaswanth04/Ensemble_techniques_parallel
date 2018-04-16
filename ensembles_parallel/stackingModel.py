@@ -21,6 +21,23 @@ class StackingModel:
         self.fold_models = {}
         self.combiner_input = None
 
+    def train_fold(self, i, train_subset, model):
+        iter_model = BaseModel('model_'+str(i),
+                               x=self.x,
+                               y=self.y,
+                               subset=train_subset)
+        print("training iter model: "+iter_model.model_name)
+        iter_model.train(model=model,
+                         data=self.train_data)
+        return iter_model
+
+    def predict_fold(self, i, test_subset, iter_model):
+        data_to_be_predicted = self.train_data.loc[test_subset]
+        x_predictions = pd.Series(iter_model.predict(data_to_be_predicted),
+                                  index=test_subset,
+                                  name='x_'+str(i))
+        return x_predictions
+
     def train(self, model_list, combiner, n_folds=3):
         # Creating Folds
         k_folds = KFold(n_splits=n_folds)
@@ -42,20 +59,14 @@ class StackingModel:
             fold_frames = []
             for i, fold in enumerate(final_folds):
                 # Training on a single fold
-                iter_model = BaseModel('model_'+str(i),
-                                       x=self.x,
-                                       y=self.y,
-                                       subset=fold[0])
-                print("training iter model: "+iter_model.model_name)
-                iter_model.train(model=model,
-                                 data=self.train_data)
+                iter_model = self.train_fold(i=i,
+                                             train_subset=fold[0],
+                                             model=model)
                 fold_models.append(iter_model)
-
-                # y_subset = self.train_data[self.y].loc[fold[1]]
-                data_to_be_predicted = self.train_data.loc[fold[1]]
-                x_predictions = pd.Series(iter_model.predict(data_to_be_predicted),
-                                          index=fold[1],
-                                          name='x_'+str(m))
+                # Prediction on a single fold
+                x_predictions = self.predict_fold(i=m,
+                                                  test_subset=fold[1],
+                                                  iter_model=iter_model)
                 fold_frames.append(x_predictions)
 
             frames.append(pd.concat(fold_frames))
