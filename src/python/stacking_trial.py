@@ -37,7 +37,7 @@ if __name__ == '__main__':
                             x=x_flags,
                             y=y_flag)
 
-    stacker.train(model_list=classifier_list, combiner=lr, n_folds=5)
+    stacker.train_parallel(model_list=classifier_list, combiner=lr, n_folds=5)
 
     print(stacker.models)
 
