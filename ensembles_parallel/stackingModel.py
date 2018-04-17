@@ -27,7 +27,7 @@ class StackingModel:
         self.combiner_input = None
 
     @staticmethod
-    def read_subset_file(self, subset_file):
+    def read_subset_file(subset_file):
         sub_file = open(subset_file, 'r')
         subset = [int(line.strip()) for line in sub_file.readlines()]
         sub_file.close()
@@ -59,7 +59,7 @@ class StackingModel:
                                      train_subset=fold[0],
                                      model=model)
         x_predictions = self.predict_fold(i=model_id,
-                                          test_subset=self.read_subset_file(fold[1]),
+                                          test_subset=self.read_subset_file(subset_file=fold[1]),
                                           iter_model=iter_model)
 
         return iter_model, x_predictions
