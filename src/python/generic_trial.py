@@ -1,8 +1,12 @@
 
 
 l = [('a', 1), ('b', 2), ('c', 3), ('d', 4)]
+a = 'bnbn'
 
-ul1, ul2 = zip(*l)
+print(type(l))
+print(type(a))
 
-
-print(ul1, ul2)
+if isinstance(l, list):
+    print('yes')
+else:
+    print('no')

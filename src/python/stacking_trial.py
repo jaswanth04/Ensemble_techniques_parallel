@@ -5,7 +5,6 @@ from sklearn.naive_bayes import GaussianNB
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from ensembles_parallel.stackingModel import StackingModel
-from sklearn.model_selection import train_test_split
 
 if __name__ == '__main__':
     data = pd.read_csv('../../data/fake_data_1.csv')

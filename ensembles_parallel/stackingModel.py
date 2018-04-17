@@ -38,6 +38,20 @@ class StackingModel:
         sub_file.close()
         return subset
 
+    @staticmethod
+    def write_subset_to_file(i, fold):
+        sub_file_train_name = __tmp_subset_prefix__ + '_train_' + str(i) + '.txt'
+        sub_file_test_name = __tmp_subset_prefix__ + '_test_' + str(i) + '.txt'
+        f_train = open(sub_file_train_name, 'w')
+        for row in fold[0]:
+            f_train.write(str(row) + '\n')
+        f_train.close()
+        f_test = open(sub_file_test_name, 'w')
+        for row in fold[1]:
+            f_test.write(str(row) + '\n')
+        f_test.close()
+        return sub_file_train_name, sub_file_test_name
+
     def train_fold(self, i, train_subset, model):
         iter_model = BaseModel('model_'+str(i),
                                x=self.x,
@@ -61,11 +75,17 @@ class StackingModel:
         fold_id = train_parameters[1]
         fold = train_parameters[2]
         model = train_parameters[3]
+
+        if isinstance(fold[1], np.ndarray) or isinstance(fold[1], list):
+            test_subset = fold[1]
+        else:
+            test_subset = self.read_subset_file(subset_file=fold[1])
+
         iter_model = self.train_fold(i=fold_id,
                                      train_subset=fold[0],
                                      model=model)
         x_predictions = self.predict_fold(i=model_id,
-                                          test_subset=self.read_subset_file(subset_file=fold[1]),
+                                          test_subset=test_subset,
                                           iter_model=iter_model)
 
         return iter_model, x_predictions
@@ -98,20 +118,7 @@ class StackingModel:
     def train(self, model_list, combiner, n_folds=3):
         # Creating Folds
         k_folds = KFold(n_splits=n_folds)
-        final_folds = []
-
-        for i, fold in enumerate(k_folds.split(self.train_data)):
-            sub_file_train_name = __tmp_subset_prefix__ + '_train_' + str(i) + '.txt'
-            sub_file_test_name = __tmp_subset_prefix__ + '_test_' + str(i) + '.txt'
-            f_train = open(sub_file_train_name, 'w')
-            for row in fold[0]:
-                f_train.write(str(row)+'\n')
-            f_train.close()
-            f_test = open(sub_file_test_name, 'w')
-            for row in fold[1]:
-                f_test.write(str(row)+'\n')
-            f_test.close()
-            final_folds.append((sub_file_train_name, sub_file_test_name))
+        final_folds = list(k_folds.split(self.train_data))
 
         frames = []
         for m, model in enumerate(model_list):
@@ -127,6 +134,7 @@ class StackingModel:
             print("Training delivery models: "+delivered_model.model_name)
             delivered_model.train(model=model,
                                   data=self.train_data)
+            print("Training of "+delivered_model.model_name+" is finished")
             self.models[delivered_model.model_name] = delivered_model
 
         frames.append(self.train_data[self.y])
@@ -146,20 +154,7 @@ class StackingModel:
     def train_parallel(self, model_list, combiner, n_folds=3):
         # Creating Folds
         k_folds = KFold(n_splits=n_folds)
-        final_folds = []
-
-        for i, fold in enumerate(k_folds.split(self.train_data)):
-            sub_file_train_name = __tmp_subset_prefix__ + '_train_' + str(i) + '.txt'
-            sub_file_test_name = __tmp_subset_prefix__ + '_test_' + str(i) + '.txt'
-            f_train = open(sub_file_train_name, 'w')
-            for row in fold[0]:
-                f_train.write(str(row)+'\n')
-            f_train.close()
-            f_test = open(sub_file_test_name, 'w')
-            for row in fold[1]:
-                f_test.write(str(row)+'\n')
-            f_test.close()
-            final_folds.append((sub_file_train_name, sub_file_test_name))
+        final_folds = [self.write_subset_to_file(i, fold) for i, fold in enumerate(k_folds.split(self.train_data))]
 
         arg_tuples = [(m, final_folds, model) for m, model in enumerate(model_list)]
 

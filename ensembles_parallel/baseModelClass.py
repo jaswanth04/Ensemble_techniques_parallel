@@ -17,12 +17,15 @@ class BaseModel:
         sub_file.close()
         return subset
 
-    def train(self, model, data = None, file_name = None):
+    def train(self, model, data=None, file_name=None):
         if data is None:
             data = pd.read_csv(file_name)
 
         if self.subset_file is not None:
-            data_subset = data.loc[self.read_subset_file()].dropna()
+            if isinstance(self.subset_file, np.ndarray) or isinstance(self.subset_file, list):
+                data_subset = data.loc[self.subset_file].dropna()
+            else:
+                data_subset = data.loc[self.read_subset_file()].dropna()
         else:
             data_subset = data
 
