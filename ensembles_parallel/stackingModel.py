@@ -115,6 +115,20 @@ class StackingModel:
         print("Training on " + delivered_model.model_name + " is finished")
         return predicted_df, model_id, fold_models, delivered_model
 
+    def train_combiner_model(self, x_frames, combiner):
+        x_frames.append(self.train_data[self.y])
+        self.combiner_input = pd.concat(x_frames, axis=1)
+        combiner_features = [col_name for col_name in self.combiner_input.columns.values if 'x_' in col_name]
+
+        combiner_model = BaseModel('combiner_model',
+                                   x=combiner_features,
+                                   y=self.y,
+                                   subset=None)
+        print("training combiner model: " + combiner_model.model_name)
+        combiner_model.train(combiner, data=self.combiner_input)
+
+        self.models['combiner_model'] = combiner_model
+
     def train(self, model_list, combiner, n_folds=3):
         # Creating Folds
         k_folds = KFold(n_splits=n_folds)
@@ -137,19 +151,7 @@ class StackingModel:
             print("Training of "+delivered_model.model_name+" is finished")
             self.models[delivered_model.model_name] = delivered_model
 
-        frames.append(self.train_data[self.y])
-
-        self.combiner_input = pd.concat(frames, axis=1)
-        combiner_features = [col_name for col_name in self.combiner_input.columns.values if 'x_' in col_name]
-
-        combiner_model = BaseModel('combiner_model',
-                                   x=combiner_features,
-                                   y=self.y,
-                                   subset=None)
-        print("training combiner model: "+combiner_model.model_name)
-        combiner_model.train(combiner, data=self.combiner_input)
-
-        self.models['combiner_model'] = combiner_model
+        self.train_combiner_model(frames, combiner)
 
     def train_parallel(self, model_list, combiner, n_folds=3):
         # Creating Folds
@@ -170,19 +172,8 @@ class StackingModel:
             frames.append(df)
             self.fold_models['classifier_' + str(model_id)] = fold_model
             self.models[delivered_model.model_name] = delivered_model
-        frames.append(self.train_data[self.y])
 
-        self.combiner_input = pd.concat(frames, axis=1)
-        combiner_features = [col_name for col_name in self.combiner_input.columns.values if 'x_' in col_name]
-
-        combiner_model = BaseModel('combiner_model',
-                                   x=combiner_features,
-                                   y=self.y,
-                                   subset=None)
-        print("training combiner model: "+combiner_model.model_name)
-        combiner_model.train(combiner, data=self.combiner_input)
-
-        self.models['combiner_model'] = combiner_model
+        self.train_combiner_model(frames, combiner)
 
     def predict(self, x):
         predictions = dict([('x_'+model.split('_')[2], self.models[model].predict(x))
