@@ -15,6 +15,10 @@ def unwrap_train_and_predict(arg, **kwarg):
     return StackingModel.train_and_predict_fold(*arg, **kwarg)
 
 
+def unwrap_train_model(arg, **kwarg):
+    return StackingModel.train_model(*arg, **kwarg)
+
+
 class StackingModel:
 
     def __init__(self, train_data, test_data, x, y):
@@ -63,6 +67,30 @@ class StackingModel:
                                           iter_model=iter_model)
 
         return iter_model, x_predictions
+
+    def train_model(self, model_parameters):
+        model_id = model_parameters[0]
+        final_folds = model_parameters[1]
+        model = model_parameters[2]
+
+        p = Pool(2)
+        arg_tuples = [(model_id, i, fold, model) for i, fold in enumerate(final_folds)]
+
+        model_and_folds = p.map(unwrap_train_and_predict, zip([self] * len(arg_tuples), arg_tuples))
+        fold_models, fold_frames = zip(*model_and_folds)
+
+        predicted_df = pd.concat(fold_frames)
+        self.fold_models['classifier_' + str(model_id)] = fold_models
+
+        delivered_model = BaseModel('delivered_model_' + str(model_id),
+                                    x=self.x,
+                                    y=self.y)
+        print("Training delivery models: " + delivered_model.model_name)
+        delivered_model.train(model=model,
+                              data=self.train_data)
+        self.models[delivered_model.model_name] = delivered_model
+
+        return predicted_df
 
     def train(self, model_list, combiner, n_folds=3):
         # Creating Folds
@@ -130,27 +158,10 @@ class StackingModel:
             f_test.close()
             final_folds.append((sub_file_train_name, sub_file_test_name))
 
-        frames = []
-        for m, model in enumerate(model_list):
-            p = Pool(2)
-            arg_tuples = [(m, i, fold, model) for i, fold in enumerate(final_folds)]
-            # model_and_folds = [self.train_and_predict_fold(model_id=m,
-            #                                                fold_id=i,
-            #                                                fold=fold,
-            #                                                model=model) for i, fold in enumerate(final_folds)]
-            model_and_folds = p.map(unwrap_train_and_predict, zip([self]*len(arg_tuples), arg_tuples))
-            fold_models, fold_frames = zip(*model_and_folds)
+        arg_tuples = [(m, final_folds, model) for m, model in enumerate(model_list)]
 
-            frames.append(pd.concat(fold_frames))
-            self.fold_models['classifier_' + str(m)] = fold_models
-
-            delivered_model = BaseModel('delivered_model_'+str(m),
-                                        x=self.x,
-                                        y=self.y)
-            print("Training delivery models: "+delivered_model.model_name)
-            delivered_model.train(model=model,
-                                  data=self.train_data)
-            self.models[delivered_model.model_name] = delivered_model
+        frames = [self.train_model(arg)
+                  for arg in arg_tuples]
 
         frames.append(self.train_data[self.y])
 
