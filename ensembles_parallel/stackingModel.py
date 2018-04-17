@@ -2,7 +2,8 @@ from sklearn.model_selection import KFold
 from ensembles_parallel.baseModelClass import BaseModel
 import pandas as pd
 from sklearn.metrics import accuracy_score, f1_score
-from multiprocessing import Pool
+import multiprocessing
+from ensembles_parallel.subPool import SubPool
 import numpy as np
 
 __tmp_folder__ = '../../tmp'
@@ -45,6 +46,7 @@ class StackingModel:
         print("training iter model: "+iter_model.model_name)
         iter_model.train(model=model,
                          data=self.train_data)
+        print("Training the iter_model "+iter_model.model_name+" is finished")
         return iter_model
 
     def predict_fold(self, i, test_subset, iter_model):
@@ -73,14 +75,16 @@ class StackingModel:
         final_folds = model_parameters[1]
         model = model_parameters[2]
 
-        p = Pool(2)
+        p = multiprocessing.Pool(2)
         arg_tuples = [(model_id, i, fold, model) for i, fold in enumerate(final_folds)]
 
         model_and_folds = p.map(unwrap_train_and_predict, zip([self] * len(arg_tuples), arg_tuples))
+        p.close()
+        p.join()
+
         fold_models, fold_frames = zip(*model_and_folds)
 
         predicted_df = pd.concat(fold_frames)
-        self.fold_models['classifier_' + str(model_id)] = fold_models
 
         delivered_model = BaseModel('delivered_model_' + str(model_id),
                                     x=self.x,
@@ -88,9 +92,8 @@ class StackingModel:
         print("Training delivery models: " + delivered_model.model_name)
         delivered_model.train(model=model,
                               data=self.train_data)
-        self.models[delivered_model.model_name] = delivered_model
-
-        return predicted_df
+        print("Training on " + delivered_model.model_name + " is finished")
+        return predicted_df, model_id, fold_models, delivered_model
 
     def train(self, model_list, combiner, n_folds=3):
         # Creating Folds
@@ -160,9 +163,18 @@ class StackingModel:
 
         arg_tuples = [(m, final_folds, model) for m, model in enumerate(model_list)]
 
-        frames = [self.train_model(arg)
-                  for arg in arg_tuples]
+        p = SubPool(2)
+        models_and_frames = p.map(unwrap_train_model, zip([self]*len(arg_tuples), arg_tuples))
 
+        p.close()
+        p.join()
+
+        frames = []
+
+        for df, model_id, fold_model, delivered_model in models_and_frames:
+            frames.append(df)
+            self.fold_models['classifier_' + str(model_id)] = fold_model
+            self.models[delivered_model.model_name] = delivered_model
         frames.append(self.train_data[self.y])
 
         self.combiner_input = pd.concat(frames, axis=1)
