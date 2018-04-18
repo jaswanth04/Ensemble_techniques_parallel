@@ -36,10 +36,10 @@ class BaseModel:
         self.model.fit(x, y)
 
     def predict(self,x):
-        x_featurised = x[x.columns.intersection(self.x)]
-        return self.model.predict(x_featurised)
+        x_featured = x[x.columns.intersection(self.x)]
+        return self.model.predict(x_featured)
 
-    def predict_for_oob(self, train_data = None, file_name = None):
+    def predict_for_oob(self, train_data=None, file_name=None):
         if train_data is None:
             train_data = pd.read_csv(file_name)
 
@@ -50,6 +50,6 @@ class BaseModel:
             if i in subset_rows:
                 predictions.append(None)
             else:
-                predictions.append(self.model.predict(row[self.x].reshape(1,-1))[0])
+                predictions.append(self.model.predict(row[self.x].reshape(1, -1))[0])
 
         return np.array(predictions)
