@@ -78,7 +78,7 @@ class BaggingModel:
 
     def train_parallel(self, model, number_of_trees, feature_sample_rate, data_sample_rate, number_of_cores=None):
         if number_of_cores is None:
-            cores = math.ceil(0.8*cpu_count()*2)
+            cores = math.ceil(0.8*cpu_count())
         else:
             cores = number_of_cores
         p = Pool(cores)

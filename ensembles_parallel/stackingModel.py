@@ -161,7 +161,7 @@ class StackingModel:
         final_folds = [self.write_subset_to_file(i, fold) for i, fold in enumerate(k_folds.split(self.train_data))]
 
         if number_of_cores is None:
-            cores = ceil(0.8*sqrt(multiprocessing.cpu_count())*2)
+            cores = ceil(0.8*sqrt(multiprocessing.cpu_count()))
         else:
             cores = ceil(sqrt(number_of_cores))
         arg_tuples = [(m, final_folds, model, cores) for m, model in enumerate(model_list)]
