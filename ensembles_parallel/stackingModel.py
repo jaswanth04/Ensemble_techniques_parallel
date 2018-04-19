@@ -5,6 +5,7 @@ from sklearn.metrics import accuracy_score, f1_score
 import multiprocessing
 from ensembles_parallel.subPool import SubPool
 import numpy as np
+from math import ceil, sqrt
 
 __tmp_folder__ = '../../tmp'
 __tmp_classifier_pickle__ = __tmp_folder__ + '/my_dumped_classifier.pkl'
@@ -94,8 +95,9 @@ class StackingModel:
         model_id = model_parameters[0]
         final_folds = model_parameters[1]
         model = model_parameters[2]
+        cores = model_parameters[3]
 
-        p = multiprocessing.Pool(2)
+        p = multiprocessing.Pool(cores)
         arg_tuples = [(model_id, i, fold, model) for i, fold in enumerate(final_folds)]
 
         model_and_folds = p.map(unwrap_train_and_predict, zip([self] * len(arg_tuples), arg_tuples))
@@ -153,14 +155,17 @@ class StackingModel:
 
         self.train_combiner_model(frames, combiner)
 
-    def train_parallel(self, model_list, combiner, n_folds=3):
+    def train_parallel(self, model_list, combiner, n_folds=3, number_of_cores=None):
         # Creating Folds
         k_folds = KFold(n_splits=n_folds)
         final_folds = [self.write_subset_to_file(i, fold) for i, fold in enumerate(k_folds.split(self.train_data))]
 
-        arg_tuples = [(m, final_folds, model) for m, model in enumerate(model_list)]
-
-        p = SubPool(2)
+        if number_of_cores is None:
+            cores = ceil(0.8*sqrt(multiprocessing.cpu_count())*2)
+        else:
+            cores = ceil(sqrt(number_of_cores))
+        arg_tuples = [(m, final_folds, model, cores) for m, model in enumerate(model_list)]
+        p = SubPool(cores)
         models_and_frames = p.map(unwrap_train_model, zip([self]*len(arg_tuples), arg_tuples))
 
         p.close()
