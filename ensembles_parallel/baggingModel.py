@@ -5,7 +5,7 @@ from random import sample
 from ensembles_parallel.baseModelClass import BaseModel
 from collections import Counter
 from sklearn.metrics import accuracy_score, f1_score
-from multiprocessing import Pool
+from multiprocessing import Pool, cpu_count
 
 
 def unwrap_self_train(arg, **kwarg):
@@ -76,13 +76,17 @@ class BaggingModel:
                                                       data_sample_perc,
                                                       'serial')))
 
-    def train_parallel(self, model, number_of_trees, feature_sample_perc, data_sample_perc):
-        p = Pool(2)
+    def train_parallel(self, model, number_of_trees, feature_sample_rate, data_sample_rate, number_of_cores=None):
+        if number_of_cores is None:
+            cores = math.ceil(0.8*cpu_count()*2)
+        else:
+            cores = number_of_cores
+        p = Pool(cores)
         with open(__tmp_classifier_pickle__, 'wb') as fid:
             cPickle.dump(model, fid)
         arg_tuples = [(__tmp_classifier_pickle__, i,
-                      feature_sample_perc,
-                      data_sample_perc,
+                       feature_sample_rate,
+                       data_sample_rate,
                       'parallel') for i in range(1, number_of_trees)]
         models = p.map(unwrap_self_train, zip([self]*len(arg_tuples),arg_tuples))
         self.baggingModel = models
