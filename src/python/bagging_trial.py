@@ -21,7 +21,10 @@ if __name__ == '__main__':
                            test_data=test_data,
                            x=x_flags,
                            y=y_flag)
-    rfModel.train_parallel(clf_gini, 70, 0.4, 0.4)
+    rfModel.train_parallel(model=clf_gini,
+                           number_of_trees=70,
+                           feature_sample_rate=0.4,
+                           data_sample_rate=0.4)
 
     trial = data[1:10]
 
